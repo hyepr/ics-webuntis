@@ -4,6 +4,7 @@ export interface User {
     password: string;
     baseurl: string;
     friendlyName: string;
+    classes?: string[];
     language?: "en" | "de";
     cancelledDisplay?: "hide" | "mark" | "show";
     showHolidays?: boolean;
