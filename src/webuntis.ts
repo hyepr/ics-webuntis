@@ -151,6 +151,20 @@ function debugLogFilterDecision(
     matched: boolean,
 ): void {
     console.log(
+        "[DEBUG] Entry kl fields (id/name/longname/orgname/orgid):",
+        JSON.stringify(
+            (entry.kl ?? []).map((kl: any) => ({
+                id: kl?.id,
+                name: kl?.name,
+                longname: kl?.longname,
+                orgname: kl?.orgname,
+                orgid: kl?.orgid,
+            })),
+            null,
+            2,
+        ),
+    );
+    console.log(
         "[DEBUG] Timetable entry filter check:",
         JSON.stringify(
             {
