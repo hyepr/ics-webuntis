@@ -82,6 +82,58 @@ function matchesAllowedClass(entry: any, allowedClasses: Set<string>): boolean {
     );
 }
 
+/*
+ * DEBUG ONLY: prints every distinct `kl` (class) identifier returned by
+ * getOwnTimetableForRange so the real class id/name/longname fields can be
+ * compared against the configured `classes` values. No credentials or
+ * personal data are touched here, only the `kl` short-data objects.
+ */
+function debugLogDistinctClasses(rawTimetable: any[]): void {
+    const seen = new Map<string, { id: number; name: string; longname: string }>();
+
+    for (const entry of rawTimetable) {
+        for (const kl of entry.kl ?? []) {
+            const key = `${kl?.id}:${kl?.name}`;
+            if (!seen.has(key)) {
+                seen.set(key, {
+                    id: kl?.id,
+                    name: kl?.name,
+                    longname: kl?.longname,
+                });
+            }
+        }
+    }
+
+    console.log(
+        "[DEBUG] WebUntis classes found:",
+        JSON.stringify(Array.from(seen.values()), null, 2),
+    );
+}
+
+/*
+ * DEBUG ONLY: for each timetable entry, prints the subject, the raw `kl`
+ * id/name pairs, and whether matchesAllowedClass() considered it a match
+ * against the configured allowed classes. Helps verify whether filtering
+ * is comparing the right field (name vs. numeric id vs. something else).
+ */
+function debugLogFilterDecision(
+    entry: any,
+    allowedClasses: Set<string>,
+    matched: boolean,
+): void {
+    console.log("[DEBUG] Timetable entry filter check:", {
+        subject: entry.su?.[0]?.name ?? entry.sg ?? entry.lstext ?? "Event",
+        classes: (entry.kl ?? []).map((kl: any) => ({
+            id: kl?.id,
+            name: kl?.name,
+            longname: kl?.longname,
+        })),
+        sg: entry.sg,
+        allowedClasses: Array.from(allowedClasses),
+        matched,
+    });
+}
+
 export async function fetchTimetable(
     user: User,
     startDate: Date,
@@ -192,11 +244,16 @@ export async function fetchTimetable(
                 clampedStartDate,
                 clampedEndDate,
             );
+
+            debugLogDistinctClasses(rawTimetable);
+
             const allowedClasses = createAllowedClassSet(user.classes);
             if (allowedClasses.size > 0) {
-                rawTimetable = rawTimetable.filter((entry: any) =>
-                    matchesAllowedClass(entry, allowedClasses),
-                );
+                rawTimetable = rawTimetable.filter((entry: any) => {
+                    const matched = matchesAllowedClass(entry, allowedClasses);
+                    debugLogFilterDecision(entry, allowedClasses, matched);
+                    return matched;
+                });
             }
         } else {
             const typeMap: Record<string, UntisElementType> = {
