@@ -61,6 +61,19 @@ The service requires a JSON configuration file.
             "password": "secret",
             "baseurl": "https://mese.webuntis.com/",
             "friendlyName": "student1",
+            "classes": [
+                "2b3",
+                "2D1",
+                "2M1",
+                "2ku2",
+                "2WR6",
+                "2e2",
+                "2smw3",
+                "2ph1",
+                "2g1",
+                "2eth2",
+                "2W_WR9"
+            ],
             "language": "en",
             "cancelledDisplay": "mark",
             "showHolidays": true,
@@ -82,6 +95,7 @@ The service requires a JSON configuration file.
 | `users[].password`         | string  | -               | Yes      | The user account password.                                                                                                                                                                                    |
 | `users[].baseurl`          | string  | -               | Yes      | The base URL of your WebUntis instance (e.g., `https://mese.webuntis.com/`).                                                                                                                                  |
 | `users[].friendlyName`     | string  | -               | Yes      | A unique local identifier for this user, used in the iCal/ ICS Endpoint.                                                                                                                                      |
+| `users[].classes`          | array   | all classes      | No       | Optional list of WebUntis class identifiers used to filter the personal timetable endpoint (`/timetable/:name`). Matching is case-insensitive and ignores leading/trailing whitespace.                      |
 | `users[].language`         | string  | `en`            | No       | Preferred language for the user (supported values: `en`, `de`).                                                                                                                                               |
 | `users[].cancelledDisplay` | string  | `show`          | No       | How to handle cancelled lessons. Options: `hide` (exclude them entirely), `mark` (include them but marked as CANCELLED), `show` (include them and clients decide on how to handle the ICS `STATUS` property). |
 | `users[].showHolidays`     | boolean | `true`          | No       | Whether school holidays are included as all-day entries in this user's calendar feed. Set to `false` to omit them.                                                                                            |
@@ -98,6 +112,19 @@ http://<host>:7464/timetable/friendlyName
 `<friendlyName>` is the one specified in the user configuration
 
 Returns the personal timetable as an iCal/ ICS feed
+
+If `classes` is configured for a user, only lessons whose WebUntis class identifier matches one of those values are included in `/timetable/:name`. Matching is case-insensitive and ignores leading/trailing whitespace.
+
+If `classes` is omitted or set to an empty array, the existing behavior is preserved and all personal timetable lessons are included.
+
+Example user configuration with class filtering:
+
+```json
+{
+    "friendlyName": "me",
+    "classes": ["2b3", "2D1", "2M1", "2ku2", "2WR6", "2e2", "2smw3", "2ph1", "2g1", "2eth2", "2W_WR9"]
+}
+```
 
 If an access token is configured, append ?access_token=my-secret:
 

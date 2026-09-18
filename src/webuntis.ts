@@ -66,6 +66,26 @@ function isRestrictedEntry(entry: any): boolean {
     return !entry.su?.length && !entry.te?.length && !entry.ro?.length;
 }
 
+function createAllowedClassSet(classes: User["classes"]): Set<string> {
+    return new Set(
+        (classes ?? [])
+            .map((className) => className.trim().toLowerCase())
+            .filter(Boolean),
+    );
+}
+
+function matchesAllowedClass(entry: any, allowedClasses: Set<string>): boolean {
+    return (
+        entry.kl?.some((lessonClass: any) => {
+            const className =
+                typeof lessonClass?.name === "string"
+                    ? lessonClass.name.trim().toLowerCase()
+                    : "";
+            return allowedClasses.has(className);
+        }) ?? false
+    );
+}
+
 export async function fetchTimetable(
     user: User,
     startDate: Date,
@@ -176,6 +196,12 @@ export async function fetchTimetable(
                 clampedStartDate,
                 clampedEndDate,
             );
+            const allowedClasses = createAllowedClassSet(user.classes);
+            if (allowedClasses.size > 0) {
+                rawTimetable = rawTimetable.filter((entry: any) =>
+                    matchesAllowedClass(entry, allowedClasses),
+                );
+            }
         } else {
             const typeMap: Record<string, UntisElementType> = {
                 class: UntisElementType.CLASS,
