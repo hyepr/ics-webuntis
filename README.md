@@ -14,9 +14,11 @@ It is designed for reliability, minimal resource usage, and straightforward depl
 - Multiple Users supported
 - Fetch timetables for specific classes, rooms, teachers, or subjects by name or numeric ID
 - Multiple language support with automatic detection and user-specific language settings (currently supports English and German)
-- Configurable handling of cancelled lessons
+- Configurable handling of cancelled lessons, with a clean strikethrough title marker
 - Optional per-user inclusion of school holidays
 - Optional per-user access token protection
+- Optional per-user, per-class custom event titles
+- Optional per-user, per-class event colors (client support varies, see [Colors](#colors))
 
 ## Quick Start
 
@@ -77,7 +79,15 @@ The service requires a JSON configuration file.
             "language": "en",
             "cancelledDisplay": "mark",
             "showHolidays": true,
-            "accessToken": "my-secret-token"
+            "accessToken": "my-secret-token",
+            "classTitles": {
+                "2ku1": "Art",
+                "2WR6": "Economics"
+            },
+            "classColors": {
+                "2ku1": "coral",
+                "2WR6": "darkblue"
+            }
         }
     ]
 }
@@ -100,6 +110,8 @@ The service requires a JSON configuration file.
 | `users[].cancelledDisplay` | string  | `show`          | No       | How to handle cancelled lessons. Options: `hide` (exclude them entirely), `mark` (include them but marked as CANCELLED), `show` (include them and clients decide on how to handle the ICS `STATUS` property). |
 | `users[].showHolidays`     | boolean | `true`          | No       | Whether school holidays are included as all-day entries in this user's calendar feed. Set to `false` to omit them.                                                                                            |
 | `users[].accessToken`      | string  | -               | No       | Optional access token(s) required to access this user's timetable.                                                                                                                                            |
+| `users[].classTitles`      | object  | -               | No       | Maps WebUntis class identifiers (e.g. `2ku1`) to a custom event title used in place of the subject. Matching is case-insensitive and ignores leading/trailing whitespace, same as `classes`.                  |
+| `users[].classColors`      | object  | -               | No       | Maps WebUntis class identifiers to a CSS3 color name (e.g. `coral`, `darkblue`) applied to matching events via the ICS `COLOR` property. See [Colors](#colors) for client support.                            |
 
 ## Usage
 
@@ -173,11 +185,43 @@ The `cancelledDisplay` option in the user configuration allows you to control ho
 
 - `hide`: Cancelled lessons will be completely excluded from the feed.
 - `show`: Cancelled lessons will be included and marked with `STATUS:CANCELLED`, allowing calendar clients to display them differently (e.g., crossed out).
-- `mark`: Same as `show` but extra text is added to the lesson title (e.g., "Math - CANCELLED")
+- `mark`: Same as `show`, but the entire event title is rendered with a Unicode strikethrough (e.g., "M̶a̶t̶h̶ ̶(̶S̶m̶i̶t̶h̶)̶"). This makes cancellations visually obvious even in clients such as Google Calendar that don't render `STATUS:CANCELLED` specially for subscribed feeds.
 
 ### Holidays
 
 The `showHolidays` option in the user configuration controls whether school holidays are included as all-day entries in the generated feed. It defaults to `true`; set it to `false` for a user if you only want lesson entries in their calendar.
+
+### Custom class titles
+
+The `classTitles` option lets you map a WebUntis class identifier (as it appears in `classes`, e.g. `2ku1`) to a custom, human-readable title. When a lesson or exam belongs to a matching class, its event title uses your custom text instead of the raw WebUntis subject code:
+
+```json
+{
+    "classTitles": {
+        "2ku1": "Art",
+        "2WR6": "Economics"
+    }
+}
+```
+
+Matching is case-insensitive and ignores leading/trailing whitespace. The teacher and class suffix (e.g. `(Smith) - (2ku1)`) is still appended after your custom title; the description field always keeps the raw WebUntis data for reference.
+
+### Colors
+
+The `classColors` option lets you map a WebUntis class identifier to a color, written into each matching event as the [RFC 7986](https://www.rfc-editor.org/rfc/rfc7986#section-5.9) `COLOR` property (a CSS3 color name, e.g. `coral`, `darkblue`, `#ignored` is not valid — use a named color):
+
+```json
+{
+    "classColors": {
+        "2ku1": "coral",
+        "2WR6": "darkblue"
+    }
+}
+```
+
+**Important limitation:** Google Calendar does **not** support per-event colors for calendars added via "From URL" subscription (which is how this feed is normally consumed) — it only lets you pick a single color for the *entire* subscribed calendar in its own UI, and ignores the ICS `COLOR` property entirely. This is a Google Calendar limitation, not something this project can work around.
+
+Per-event `COLOR` is still emitted because some other clients (e.g. Apple Calendar, some Thunderbird/Lightning versions) do honor it. If your primary target is Google Calendar, consider exposing each class as its own feed (e.g. via the [element timetable endpoints](#specific-element-timetable-class-room-teacher-subject)) and assigning a different color to each subscribed calendar in Google Calendar's UI instead.
 
 ### URL parameters
 

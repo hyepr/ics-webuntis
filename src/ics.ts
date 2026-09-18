@@ -1,16 +1,28 @@
 import ical, { ICalEventStatus } from "ical-generator";
 import { Lesson, User } from "./types";
 import { TFunction } from "i18next";
-import { utcDateOnly } from "./utils";
+import { resolveClassOverride, strikethrough, utcDateOnly } from "./utils";
+
+export interface IcsOptions {
+    cancelledDisplay?: User["cancelledDisplay"];
+    /* Maps WebUntis class identifiers to a custom event title, see User.classTitles */
+    classTitles?: Record<string, string>;
+    /* Maps WebUntis class identifiers to a CSS3 color name, see User.classColors */
+    classColors?: Record<string, string>;
+}
 
 export function lessonsToIcs(
     lessons: Lesson[],
     timezone: string,
     requestedTimetable: string,
     t: TFunction,
-    cancelledDisplay: User["cancelledDisplay"] = "mark",
+    options: IcsOptions = {},
 ): string {
+    const { cancelledDisplay = "mark", classTitles, classColors } = options;
     const cal = ical({ name: t("calendar.name"), timezone });
+    // Tracks the color per created VEVENT (in creation order) so it can be injected
+    // into the raw ICS output afterwards, since ical-generator has no color API.
+    const eventColors: (string | undefined)[] = [];
 
     for (const l of lessons) {
         // Skip cancelled lessons if cancelledDisplay is set to "hide"
@@ -40,10 +52,12 @@ export function lessonsToIcs(
                   )
                 : undefined;
 
+            const titleOverride = resolveClassOverride(l.class, classTitles);
+            const title = titleOverride ?? l.lstext;
             const summary =
                 cancelledDisplay !== "show" && l.status === "cancelled"
-                    ? `[${t("calendar.cancelled")}] ${l.lstext}`
-                    : l.lstext;
+                    ? strikethrough(title)
+                    : title;
 
             cal.createEvent({
                 start,
@@ -55,6 +69,7 @@ export function lessonsToIcs(
                 )}: ${l.status}`,
                 status: calStatus as ICalEventStatus,
             });
+            eventColors.push(resolveClassOverride(l.class, classColors));
             continue;
         }
 
@@ -78,14 +93,13 @@ export function lessonsToIcs(
         const classSummary =
             classCount > 3 ? `${classList} ...+${classCount - 3}` : classList;
 
-        // hide or use alternative text for ics SUMMARY if subject is unknown
-        const calSummary = [
-            cancelledDisplay === "show" && l.status === "cancelled"
-                ? ""
-                : l.status === "cancelled"
-                  ? `[${t("calendar.cancelled")}]`
-                  : "",
-            l.subject === "Event" ? l.lstext : l.subject,
+        // custom title override or hide/use alternative text for ics SUMMARY if subject is unknown
+        const titleOverride = resolveClassOverride(l.class, classTitles);
+        const subjectText =
+            titleOverride ?? (l.subject === "Event" ? l.lstext : l.subject);
+
+        let calSummary = [
+            subjectText,
             teacherSummary !== unknownTeacher && `(${teacherSummary})`,
             teacherSummary !== unknownTeacher &&
                 classSummary !== unknownClass &&
@@ -94,6 +108,13 @@ export function lessonsToIcs(
         ]
             .filter(Boolean)
             .join(" ");
+
+        // Strike through the whole title instead of a "[Cancelled]" prefix so
+        // cancellations are visible even on clients that ignore STATUS:CANCELLED
+        // (e.g. Google Calendar's "From URL" subscriptions).
+        if (cancelledDisplay !== "show" && l.status === "cancelled") {
+            calSummary = strikethrough(calSummary);
+        }
 
         const calDescription = `${t("calendar.subject")}: ${
             l.subject
@@ -125,7 +146,29 @@ export function lessonsToIcs(
             description: calDescription,
             status: calStatus as ICalEventStatus,
         });
+        eventColors.push(resolveClassOverride(l.class, classColors));
     }
 
-    return cal.toString();
+    return injectEventColors(cal.toString(), eventColors);
+}
+
+/*
+ * ical-generator has no API for the RFC 7986 COLOR property, so it's injected
+ * into the raw ICS output afterwards, matching VEVENT blocks by creation order.
+ *
+ * Note: this is a best-effort standards-compliant hint for clients that support
+ * per-event color (e.g. Apple Calendar, Thunderbird). Google Calendar ignores
+ * per-event colors entirely for calendars subscribed "From URL" - it only allows
+ * choosing a single color for the whole subscribed calendar in its own UI.
+ */
+function injectEventColors(
+    ics: string,
+    colors: (string | undefined)[],
+): string {
+    let index = -1;
+    return ics.replace(/END:VEVENT\r?\n/g, (match) => {
+        index++;
+        const color = colors[index];
+        return color ? `COLOR:${color}\r\n${match}` : match;
+    });
 }

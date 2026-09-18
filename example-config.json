@@ -26,7 +26,15 @@
             "language": "en",
             "cancelledDisplay": "mark",
             "showHolidays": true,
-            "accessToken": ""
+            "accessToken": "",
+            "classTitles": {
+                "2ku1": "Art",
+                "2WR6": "Economics"
+            },
+            "classColors": {
+                "2ku1": "coral",
+                "2WR6": "darkblue"
+            }
         }
     ]
 }

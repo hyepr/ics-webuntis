@@ -9,6 +9,10 @@ export interface User {
     cancelledDisplay?: "hide" | "mark" | "show";
     showHolidays?: boolean;
     accessToken?: string;
+    /* Maps WebUntis class identifiers (e.g. "2ku1") to a custom, human-readable event title */
+    classTitles?: Record<string, string>;
+    /* Maps WebUntis class identifiers (e.g. "2ku1") to a CSS3 color name (RFC 7986 COLOR) for the generated event */
+    classColors?: Record<string, string>;
 }
 
 export interface Config {

@@ -129,7 +129,11 @@ async function main() {
                 configManager.config.timezone || "Europe/Berlin",
                 user.friendlyName,
                 req.t,
-                cancelledDisplay,
+                {
+                    cancelledDisplay,
+                    classTitles: user.classTitles,
+                    classColors: user.classColors,
+                },
             );
 
             icsCache.set(cacheKey, ics);
@@ -188,7 +192,11 @@ async function main() {
                     configManager.config.timezone || "Europe/Berlin",
                     `${user.friendlyName} - ${rawType}`,
                     req.t,
-                    cancelledDisplay,
+                    {
+                        cancelledDisplay,
+                        classTitles: user.classTitles,
+                        classColors: user.classColors,
+                    },
                 );
 
                 icsCache.set(cacheKey, ics);
@@ -233,7 +241,11 @@ async function main() {
                 configManager.config.timezone || "Europe/Berlin",
                 `${user.friendlyName} - ${type || "own"} ${id || ""}`,
                 req.t,
-                cancelledDisplay,
+                {
+                    cancelledDisplay,
+                    classTitles: user.classTitles,
+                    classColors: user.classColors,
+                },
             );
 
             icsCache.set(cacheKey, ics);
