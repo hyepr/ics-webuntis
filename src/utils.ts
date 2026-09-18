@@ -14,31 +14,31 @@ export function dateToUntisNumber(d: Date): number {
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 }
 
-export function normalizeClasses(classes?: string[]): string[] {
+export function normalizeSubjects(subjects?: string[]): string[] {
     return Array.from(
         new Set(
-            (Array.isArray(classes) ? classes : [])
-                .map((className) => className.trim().toLowerCase())
+            (Array.isArray(subjects) ? subjects : [])
+                .map((subject) => subject.trim().toLowerCase())
                 .filter(Boolean),
         ),
     ).sort();
 }
 
-export function normalizeClassName(name: string): string {
+export function normalizeSubjectName(name: string): string {
     return name.trim().toLowerCase();
 }
 
-/* Resolves the first configured override whose class identifier matches one of the lesson's classes */
-export function resolveClassOverride(
-    classes: string[],
+/* Resolves the configured override, if any, whose subject identifier matches the lesson's subject */
+export function resolveSubjectOverride(
+    subject: string,
     overrides: Record<string, string> | undefined,
 ): string | undefined {
     if (!overrides) return undefined;
 
+    const normalizedSubject = normalizeSubjectName(subject);
     for (const [key, value] of Object.entries(overrides)) {
         if (!value) continue;
-        const normalizedKey = normalizeClassName(key);
-        if (classes.some((c) => normalizeClassName(c) === normalizedKey)) {
+        if (normalizeSubjectName(key) === normalizedSubject) {
             return value;
         }
     }
@@ -47,13 +47,11 @@ export function resolveClassOverride(
 }
 
 /*
- * Renders text with a strikethrough using Unicode combining characters instead of
- * a translated "[Cancelled]" prefix. Unlike ICS STATUS:CANCELLED, this is visible
- * directly in the event title on clients that don't render STATUS specially
- * (e.g. Google Calendar subscribed/"From URL" feeds).
+ * Prefixes cancelled lesson titles with a "❌" marker instead of a translated
+ * "[Cancelled]" prefix. Unlike ICS STATUS:CANCELLED, this is visible directly
+ * in the event title on clients that don't render STATUS specially (e.g.
+ * Google Calendar subscribed/"From URL" feeds).
  */
-export function strikethrough(text: string): string {
-    return Array.from(text)
-        .map((char) => (char === "\n" ? char : `${char}̶`))
-        .join("");
+export function markCancelled(text: string): string {
+    return `❌ ${text}`;
 }

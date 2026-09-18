@@ -1,14 +1,14 @@
 import ical, { ICalEventStatus } from "ical-generator";
 import { Lesson, User } from "./types";
 import { TFunction } from "i18next";
-import { resolveClassOverride, strikethrough, utcDateOnly } from "./utils";
+import { resolveSubjectOverride, markCancelled, utcDateOnly } from "./utils";
 
 export interface IcsOptions {
     cancelledDisplay?: User["cancelledDisplay"];
-    /* Maps WebUntis class identifiers to a custom event title, see User.classTitles */
-    classTitles?: Record<string, string>;
-    /* Maps WebUntis class identifiers to a CSS3 color name, see User.classColors */
-    classColors?: Record<string, string>;
+    /* Maps WebUntis subject identifiers to a custom event title, see User.subjectTitles */
+    subjectTitles?: Record<string, string>;
+    /* Maps WebUntis subject identifiers to a CSS3 color name, see User.subjectColors */
+    subjectColors?: Record<string, string>;
 }
 
 export function lessonsToIcs(
@@ -18,7 +18,7 @@ export function lessonsToIcs(
     t: TFunction,
     options: IcsOptions = {},
 ): string {
-    const { cancelledDisplay = "mark", classTitles, classColors } = options;
+    const { cancelledDisplay = "mark", subjectTitles, subjectColors } = options;
     const cal = ical({ name: t("calendar.name"), timezone });
     // Tracks the color per created VEVENT (in creation order) so it can be injected
     // into the raw ICS output afterwards, since ical-generator has no color API.
@@ -52,11 +52,11 @@ export function lessonsToIcs(
                   )
                 : undefined;
 
-            const titleOverride = resolveClassOverride(l.class, classTitles);
+            const titleOverride = resolveSubjectOverride(l.subject, subjectTitles);
             const title = titleOverride ?? l.lstext;
             const summary =
                 cancelledDisplay !== "show" && l.status === "cancelled"
-                    ? strikethrough(title)
+                    ? markCancelled(title)
                     : title;
 
             cal.createEvent({
@@ -69,7 +69,7 @@ export function lessonsToIcs(
                 )}: ${l.status}`,
                 status: calStatus as ICalEventStatus,
             });
-            eventColors.push(resolveClassOverride(l.class, classColors));
+            eventColors.push(resolveSubjectOverride(l.subject, subjectColors));
             continue;
         }
 
@@ -94,7 +94,7 @@ export function lessonsToIcs(
             classCount > 3 ? `${classList} ...+${classCount - 3}` : classList;
 
         // custom title override or hide/use alternative text for ics SUMMARY if subject is unknown
-        const titleOverride = resolveClassOverride(l.class, classTitles);
+        const titleOverride = resolveSubjectOverride(l.subject, subjectTitles);
         const subjectText =
             titleOverride ?? (l.subject === "Event" ? l.lstext : l.subject);
 
@@ -109,11 +109,11 @@ export function lessonsToIcs(
             .filter(Boolean)
             .join(" ");
 
-        // Strike through the whole title instead of a "[Cancelled]" prefix so
-        // cancellations are visible even on clients that ignore STATUS:CANCELLED
-        // (e.g. Google Calendar's "From URL" subscriptions).
+        // Prefix with a "❌" marker instead of relying on STATUS:CANCELLED so
+        // cancellations are visible even on clients that ignore it (e.g.
+        // Google Calendar's "From URL" subscriptions).
         if (cancelledDisplay !== "show" && l.status === "cancelled") {
-            calSummary = strikethrough(calSummary);
+            calSummary = markCancelled(calSummary);
         }
 
         const calDescription = `${t("calendar.subject")}: ${
@@ -146,7 +146,7 @@ export function lessonsToIcs(
             description: calDescription,
             status: calStatus as ICalEventStatus,
         });
-        eventColors.push(resolveClassOverride(l.class, classColors));
+        eventColors.push(resolveSubjectOverride(l.subject, subjectColors));
     }
 
     return injectEventColors(cal.toString(), eventColors);

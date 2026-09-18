@@ -10,7 +10,7 @@
             "password": "",
             "baseurl": "",
             "friendlyName": "",
-            "classes": [
+            "subjectsWhitelist": [
                 "2b3",
                 "2D1",
                 "2M1",
@@ -23,15 +23,16 @@
                 "2eth2",
                 "2W_WR9"
             ],
+            "subjectsBlacklist": [],
             "language": "en",
             "cancelledDisplay": "mark",
             "showHolidays": true,
             "accessToken": "",
-            "classTitles": {
+            "subjectTitles": {
                 "2ku1": "Art",
                 "2WR6": "Economics"
             },
-            "classColors": {
+            "subjectColors": {
                 "2ku1": "coral",
                 "2WR6": "darkblue"
             }
