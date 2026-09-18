@@ -83,55 +83,85 @@ function matchesAllowedClass(entry: any, allowedClasses: Set<string>): boolean {
 }
 
 /*
- * DEBUG ONLY: prints every distinct `kl` (class) identifier returned by
- * getOwnTimetableForRange so the real class id/name/longname fields can be
- * compared against the configured `classes` values. No credentials or
- * personal data are touched here, only the `kl` short-data objects.
+ * DEBUG ONLY: prints every distinct `kl` (class) object returned by
+ * getOwnTimetableForRange, plus every distinct value seen on OTHER
+ * entry-level fields that could plausibly be the "real" course/group
+ * identifier instead of `kl` (e.g. `sg`, the Stundenplangruppe/course-group
+ * code that Oberstufe/Kurssystem schools often use instead of a per-course
+ * Klasse). No credentials, tokens, or personal data are touched — only
+ * generic timetable metadata.
  */
 function debugLogDistinctClasses(rawTimetable: any[]): void {
-    const seen = new Map<string, { id: number; name: string; longname: string }>();
+    const seenClasses = new Map<string, Record<string, unknown>>();
+    const seenSg = new Set<string>();
+    const seenActivityType = new Set<string>();
+    const seenLsnumber = new Set<string>();
 
     for (const entry of rawTimetable) {
         for (const kl of entry.kl ?? []) {
             const key = `${kl?.id}:${kl?.name}`;
-            if (!seen.has(key)) {
-                seen.set(key, {
+            if (!seenClasses.has(key)) {
+                seenClasses.set(key, {
                     id: kl?.id,
                     name: kl?.name,
                     longname: kl?.longname,
+                    orgid: kl?.orgid,
+                    orgname: kl?.orgname,
                 });
             }
         }
+        if (entry.sg !== undefined) seenSg.add(String(entry.sg));
+        if (entry.activityType !== undefined)
+            seenActivityType.add(String(entry.activityType));
+        if (entry.lsnumber !== undefined)
+            seenLsnumber.add(String(entry.lsnumber));
     }
 
     console.log(
-        "[DEBUG] WebUntis classes found:",
-        JSON.stringify(Array.from(seen.values()), null, 2),
+        "[DEBUG] WebUntis classes found (kl):",
+        JSON.stringify(Array.from(seenClasses.values()), null, 2),
+    );
+    console.log(
+        "[DEBUG] Distinct entry.sg values (possible course/group identifier):",
+        JSON.stringify(Array.from(seenSg), null, 2),
+    );
+    console.log(
+        "[DEBUG] Distinct entry.activityType values:",
+        JSON.stringify(Array.from(seenActivityType), null, 2),
+    );
+    console.log(
+        "[DEBUG] Distinct entry.lsnumber values:",
+        JSON.stringify(Array.from(seenLsnumber), null, 2),
     );
 }
 
 /*
- * DEBUG ONLY: for each timetable entry, prints the subject, the raw `kl`
- * id/name pairs, and whether matchesAllowedClass() considered it a match
- * against the configured allowed classes. Helps verify whether filtering
- * is comparing the right field (name vs. numeric id vs. something else).
+ * DEBUG ONLY: for each timetable entry, prints the FULL raw entry (as
+ * returned by getOwnTimetableForRange) alongside whether
+ * matchesAllowedClass() considered it a match against the configured
+ * allowed classes. This is intentionally exhaustive — not just `kl` — so
+ * every candidate identifier field (sg, id, lsnumber, su/te/ro ids, etc.)
+ * is visible without having to guess which one is the "real" one.
+ * Timetable entries never carry credentials/tokens/cookies, so logging the
+ * whole entry is safe.
  */
 function debugLogFilterDecision(
     entry: any,
     allowedClasses: Set<string>,
     matched: boolean,
 ): void {
-    console.log("[DEBUG] Timetable entry filter check:", {
-        subject: entry.su?.[0]?.name ?? entry.sg ?? entry.lstext ?? "Event",
-        classes: (entry.kl ?? []).map((kl: any) => ({
-            id: kl?.id,
-            name: kl?.name,
-            longname: kl?.longname,
-        })),
-        sg: entry.sg,
-        allowedClasses: Array.from(allowedClasses),
-        matched,
-    });
+    console.log(
+        "[DEBUG] Timetable entry filter check:",
+        JSON.stringify(
+            {
+                entry,
+                allowedClasses: Array.from(allowedClasses),
+                matched,
+            },
+            null,
+            2,
+        ),
+    );
 }
 
 export async function fetchTimetable(
