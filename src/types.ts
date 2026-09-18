@@ -4,15 +4,18 @@ export interface User {
     password: string;
     baseurl: string;
     friendlyName: string;
-    classes?: string[];
+    /* If non-empty, only lessons whose WebUntis subject identifier (e.g. "2b3") is in this list are included */
+    subjectsWhitelist?: string[];
+    /* Lessons whose WebUntis subject identifier is in this list are always excluded, even if also whitelisted */
+    subjectsBlacklist?: string[];
     language?: "en" | "de";
     cancelledDisplay?: "hide" | "mark" | "show";
     showHolidays?: boolean;
     accessToken?: string;
-    /* Maps WebUntis class identifiers (e.g. "2ku1") to a custom, human-readable event title */
-    classTitles?: Record<string, string>;
-    /* Maps WebUntis class identifiers (e.g. "2ku1") to a CSS3 color name (RFC 7986 COLOR) for the generated event */
-    classColors?: Record<string, string>;
+    /* Maps WebUntis subject identifiers (e.g. "2ku1") to a custom, human-readable event title */
+    subjectTitles?: Record<string, string>;
+    /* Maps WebUntis subject identifiers (e.g. "2ku1") to a CSS3 color name (RFC 7986 COLOR) for the generated event */
+    subjectColors?: Record<string, string>;
 }
 
 export interface Config {

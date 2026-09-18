@@ -6,7 +6,7 @@ import {
     Homework as UntisHomework,
 } from "webuntis";
 import { Lesson, User, UntisElementType } from "./types";
-import { parseUntisDate, dateToUntisNumber, normalizeClasses } from "./utils";
+import { parseUntisDate, dateToUntisNumber, normalizeSubjects } from "./utils";
 import { mergeLessons } from "./merge";
 
 interface SessionEntry {
@@ -66,47 +66,33 @@ function isRestrictedEntry(entry: any): boolean {
     return !entry.su?.length && !entry.te?.length && !entry.ro?.length;
 }
 
-function createAllowedClassSet(classes: User["classes"]): Set<string> {
-    return new Set(normalizeClasses(classes));
+function createSubjectSet(subjects: string[] | undefined): Set<string> {
+    return new Set(normalizeSubjects(subjects));
 }
 
-function matchesAllowedClass(entry: any, allowedClasses: Set<string>): boolean {
-    return (
-        entry.kl?.some((lessonClass: any) => {
-            const className =
-                typeof lessonClass?.name === "string"
-                    ? lessonClass.name.trim().toLowerCase()
-                    : "";
-            return allowedClasses.has(className);
-        }) ?? false
-    );
+function getEntrySubjectNames(entry: any): string[] {
+    return (entry.su ?? [])
+        .map((su: any) =>
+            typeof su?.name === "string" ? su.name.trim().toLowerCase() : "",
+        )
+        .filter(Boolean);
 }
 
 /*
- * DEBUG ONLY: prints every distinct subject (`su`) found in this account's
- * own timetable - nothing else. No credentials, tokens, or personal data
- * are touched, only the subject short-data objects.
+ * A lesson passes if none of its subjects are blacklisted, and - when a
+ * whitelist is configured - at least one of its subjects is whitelisted.
+ * The blacklist always wins over the whitelist.
  */
-function debugLogDistinctSubjects(rawTimetable: any[]): void {
-    const seen = new Map<string, { id: number; name: string; longname: string }>();
+function matchesSubjectFilter(
+    entry: any,
+    whitelist: Set<string>,
+    blacklist: Set<string>,
+): boolean {
+    const subjects = getEntrySubjectNames(entry);
 
-    for (const entry of rawTimetable) {
-        for (const su of entry.su ?? []) {
-            const key = `${su?.id}:${su?.name}`;
-            if (!seen.has(key)) {
-                seen.set(key, {
-                    id: su?.id,
-                    name: su?.name,
-                    longname: su?.longname,
-                });
-            }
-        }
-    }
-
-    console.log(
-        "[DEBUG] Subjects found in your timetable:",
-        JSON.stringify(Array.from(seen.values()), null, 2),
-    );
+    if (subjects.some((s) => blacklist.has(s))) return false;
+    if (whitelist.size > 0) return subjects.some((s) => whitelist.has(s));
+    return true;
 }
 
 export async function fetchTimetable(
@@ -220,12 +206,15 @@ export async function fetchTimetable(
                 clampedEndDate,
             );
 
-            debugLogDistinctSubjects(rawTimetable);
-
-            const allowedClasses = createAllowedClassSet(user.classes);
-            if (allowedClasses.size > 0) {
+            const subjectsWhitelist = createSubjectSet(user.subjectsWhitelist);
+            const subjectsBlacklist = createSubjectSet(user.subjectsBlacklist);
+            if (subjectsWhitelist.size > 0 || subjectsBlacklist.size > 0) {
                 rawTimetable = rawTimetable.filter((entry: any) =>
-                    matchesAllowedClass(entry, allowedClasses),
+                    matchesSubjectFilter(
+                        entry,
+                        subjectsWhitelist,
+                        subjectsBlacklist,
+                    ),
                 );
             }
         } else {

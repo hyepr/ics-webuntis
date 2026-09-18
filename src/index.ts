@@ -11,7 +11,7 @@ import {
 import { lessonsToIcs } from "./ics";
 import { CacheHandler } from "./cacheHandler";
 import { Lesson, User } from "./types";
-import { normalizeClasses } from "./utils";
+import { normalizeSubjects } from "./utils";
 import accessHandler from "./accessHandler";
 
 const CANCELLED_DISPLAY_VALUES: NonNullable<User["cancelledDisplay"]>[] = [
@@ -112,8 +112,8 @@ async function main() {
                 req.query.cancelledDisplay,
                 user.cancelledDisplay,
             );
-            const classesKey = normalizeClasses(user.classes).join(",");
-            const cacheKey = `${user.username}:${req.i18n.language}:${cancelledDisplay}:${classesKey}`;
+            const subjectsKey = `${normalizeSubjects(user.subjectsWhitelist).join(",")}|${normalizeSubjects(user.subjectsBlacklist).join(",")}`;
+            const cacheKey = `${user.username}:${req.i18n.language}:${cancelledDisplay}:${subjectsKey}`;
             const cacheEntry = icsCache.get(cacheKey);
             if (cacheEntry) {
                 return sendIcs(res, user.friendlyName, cacheEntry.ics);
@@ -133,8 +133,8 @@ async function main() {
                 req.t,
                 {
                     cancelledDisplay,
-                    classTitles: user.classTitles,
-                    classColors: user.classColors,
+                    subjectTitles: user.subjectTitles,
+                    subjectColors: user.subjectColors,
                 },
             );
 
@@ -196,8 +196,8 @@ async function main() {
                     req.t,
                     {
                         cancelledDisplay,
-                        classTitles: user.classTitles,
-                        classColors: user.classColors,
+                        subjectTitles: user.subjectTitles,
+                        subjectColors: user.subjectColors,
                     },
                 );
 
@@ -245,8 +245,8 @@ async function main() {
                 req.t,
                 {
                     cancelledDisplay,
-                    classTitles: user.classTitles,
-                    classColors: user.classColors,
+                    subjectTitles: user.subjectTitles,
+                    subjectColors: user.subjectColors,
                 },
             );
 

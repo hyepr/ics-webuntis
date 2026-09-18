@@ -14,11 +14,12 @@ It is designed for reliability, minimal resource usage, and straightforward depl
 - Multiple Users supported
 - Fetch timetables for specific classes, rooms, teachers, or subjects by name or numeric ID
 - Multiple language support with automatic detection and user-specific language settings (currently supports English and German)
-- Configurable handling of cancelled lessons, with a clean strikethrough title marker
+- Configurable handling of cancelled lessons, with a clean "❌" title marker
 - Optional per-user inclusion of school holidays
 - Optional per-user access token protection
-- Optional per-user, per-class custom event titles
-- Optional per-user, per-class event colors (client support varies, see [Colors](#colors))
+- Optional per-user subject whitelist/blacklist to control which lessons show up in the personal timetable
+- Optional per-user, per-subject custom event titles
+- Optional per-user, per-subject event colors (client support varies, see [Colors](#colors))
 
 ## Quick Start
 
@@ -63,7 +64,7 @@ The service requires a JSON configuration file.
             "password": "secret",
             "baseurl": "https://mese.webuntis.com/",
             "friendlyName": "student1",
-            "classes": [
+            "subjectsWhitelist": [
                 "2b3",
                 "2D1",
                 "2M1",
@@ -76,15 +77,16 @@ The service requires a JSON configuration file.
                 "2eth2",
                 "2W_WR9"
             ],
+            "subjectsBlacklist": [],
             "language": "en",
             "cancelledDisplay": "mark",
             "showHolidays": true,
             "accessToken": "my-secret-token",
-            "classTitles": {
+            "subjectTitles": {
                 "2ku1": "Art",
                 "2WR6": "Economics"
             },
-            "classColors": {
+            "subjectColors": {
                 "2ku1": "coral",
                 "2WR6": "darkblue"
             }
@@ -93,25 +95,26 @@ The service requires a JSON configuration file.
 }
 ```
 
-| Option                     | Type    | Default         | Required | Description                                                                                                                                                                                                   |
-| :------------------------- | :------ | :-------------- | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `daysBefore`               | integer | `7`             | No       | Number of days in the past to fetch timetable entries for.                                                                                                                                                    |
-| `daysAfter`                | integer | `14`            | No       | Number of days in the future to fetch timetable entries for.                                                                                                                                                  |
-| `cacheDuration`            | integer | `300`           | No       | Cache duration in seconds (5 minutes by default). Prevents excessive requests to WebUntis.                                                                                                                    |
-| `timezone`                 | string  | `Europe/Berlin` | No       | IANA timezone name used to tag the generated iCal calendar (e.g., `Europe/Berlin`, `Europe/Vienna`).                                                                                                          |
-| `users`                    | array   | `[]`            | Yes      | List of user objects for connecting to WebUntis.                                                                                                                                                              |
-| `users[].school`           | string  | -               | Yes      | The school name as used in WebUntis.                                                                                                                                                                          |
-| `users[].username`         | string  | -               | Yes      | The user account name.                                                                                                                                                                                        |
-| `users[].password`         | string  | -               | Yes      | The user account password.                                                                                                                                                                                    |
-| `users[].baseurl`          | string  | -               | Yes      | The base URL of your WebUntis instance (e.g., `https://mese.webuntis.com/`).                                                                                                                                  |
-| `users[].friendlyName`     | string  | -               | Yes      | A unique local identifier for this user, used in the iCal/ ICS Endpoint.                                                                                                                                      |
-| `users[].classes`          | array   | all classes      | No       | Optional list of WebUntis class identifiers used to filter the personal timetable endpoint (`/timetable/:name`). Matching is case-insensitive and ignores leading/trailing whitespace.                      |
-| `users[].language`         | string  | `en`            | No       | Preferred language for the user (supported values: `en`, `de`).                                                                                                                                               |
-| `users[].cancelledDisplay` | string  | `show`          | No       | How to handle cancelled lessons. Options: `hide` (exclude them entirely), `mark` (include them but marked as CANCELLED), `show` (include them and clients decide on how to handle the ICS `STATUS` property). |
-| `users[].showHolidays`     | boolean | `true`          | No       | Whether school holidays are included as all-day entries in this user's calendar feed. Set to `false` to omit them.                                                                                            |
-| `users[].accessToken`      | string  | -               | No       | Optional access token(s) required to access this user's timetable.                                                                                                                                            |
-| `users[].classTitles`      | object  | -               | No       | Maps WebUntis class identifiers (e.g. `2ku1`) to a custom event title used in place of the subject. Matching is case-insensitive and ignores leading/trailing whitespace, same as `classes`.                  |
-| `users[].classColors`      | object  | -               | No       | Maps WebUntis class identifiers to a CSS3 color name (e.g. `coral`, `darkblue`) applied to matching events via the ICS `COLOR` property. See [Colors](#colors) for client support.                            |
+| Option                        | Type    | Default          | Required | Description                                                                                                                                                                                                   |
+| :----------------------------- | :------ | :--------------- | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `daysBefore`                   | integer | `7`             | No       | Number of days in the past to fetch timetable entries for.                                                                                                                                                    |
+| `daysAfter`                    | integer | `14`            | No       | Number of days in the future to fetch timetable entries for.                                                                                                                                                  |
+| `cacheDuration`                | integer | `300`           | No       | Cache duration in seconds (5 minutes by default). Prevents excessive requests to WebUntis.                                                                                                                    |
+| `timezone`                     | string  | `Europe/Berlin` | No       | IANA timezone name used to tag the generated iCal calendar (e.g., `Europe/Berlin`, `Europe/Vienna`).                                                                                                          |
+| `users`                        | array   | `[]`            | Yes      | List of user objects for connecting to WebUntis.                                                                                                                                                              |
+| `users[].school`               | string  | -               | Yes      | The school name as used in WebUntis.                                                                                                                                                                          |
+| `users[].username`             | string  | -               | Yes      | The user account name.                                                                                                                                                                                        |
+| `users[].password`             | string  | -               | Yes      | The user account password.                                                                                                                                                                                    |
+| `users[].baseurl`              | string  | -               | Yes      | The base URL of your WebUntis instance (e.g., `https://mese.webuntis.com/`).                                                                                                                                  |
+| `users[].friendlyName`         | string  | -               | Yes      | A unique local identifier for this user, used in the iCal/ ICS Endpoint.                                                                                                                                      |
+| `users[].subjectsWhitelist`    | array   | all subjects    | No       | Optional list of WebUntis subject identifiers (e.g. `2b3`) used to filter the personal timetable endpoint (`/timetable/:name`) - if non-empty, only lessons with a matching subject are included. Matching is case-insensitive and ignores leading/trailing whitespace. |
+| `users[].subjectsBlacklist`    | array   | none            | No       | Optional list of WebUntis subject identifiers to always exclude from the personal timetable endpoint, even if also present in `subjectsWhitelist`.                                                           |
+| `users[].language`             | string  | `en`            | No       | Preferred language for the user (supported values: `en`, `de`).                                                                                                                                               |
+| `users[].cancelledDisplay`     | string  | `show`          | No       | How to handle cancelled lessons. Options: `hide` (exclude them entirely), `mark` (include them but marked as CANCELLED), `show` (include them and clients decide on how to handle the ICS `STATUS` property). |
+| `users[].showHolidays`         | boolean | `true`          | No       | Whether school holidays are included as all-day entries in this user's calendar feed. Set to `false` to omit them.                                                                                            |
+| `users[].accessToken`          | string  | -               | No       | Optional access token(s) required to access this user's timetable.                                                                                                                                            |
+| `users[].subjectTitles`        | object  | -               | No       | Maps WebUntis subject identifiers (e.g. `2ku1`) to a custom event title used in place of the raw subject code. Matching is case-insensitive and ignores leading/trailing whitespace.                          |
+| `users[].subjectColors`        | object  | -               | No       | Maps WebUntis subject identifiers to a CSS3 color name (e.g. `coral`, `darkblue`) applied to matching events via the ICS `COLOR` property. See [Colors](#colors) for client support.                          |
 
 ## Usage
 
@@ -125,16 +128,19 @@ http://<host>:7464/timetable/friendlyName
 
 Returns the personal timetable as an iCal/ ICS feed
 
-If `classes` is configured for a user, only lessons whose WebUntis class identifier matches one of those values are included in `/timetable/:name`. Matching is case-insensitive and ignores leading/trailing whitespace.
+If `subjectsWhitelist` is configured for a user, only lessons whose WebUntis subject identifier matches one of those values are included in `/timetable/:name`. If `subjectsBlacklist` is configured, lessons matching one of those values are always excluded, even if also present in `subjectsWhitelist`. Matching is case-insensitive and ignores leading/trailing whitespace.
 
-If `classes` is omitted or set to an empty array, the existing behavior is preserved and all personal timetable lessons are included.
+If both `subjectsWhitelist` and `subjectsBlacklist` are omitted or empty, the existing behavior is preserved and all personal timetable lessons are included.
 
-Example user configuration with class filtering:
+**Finding your subject identifiers:** WebUntis subject identifiers (e.g. `2b3`, `2WR6`) are not the same as class names shown elsewhere in WebUntis - they're the codes attached to each lesson's subject (`su`). Request `/timetable/:name` once and check the individual lesson descriptions in the resulting feed (each event's description includes a `Subject: ...` line) to see the exact identifiers your account uses.
+
+Example user configuration with subject filtering:
 
 ```json
 {
     "friendlyName": "me",
-    "classes": ["2b3", "2D1", "2M1", "2ku2", "2WR6", "2e2", "2smw3", "2ph1", "2g1", "2eth2", "2W_WR9"]
+    "subjectsWhitelist": ["2b3", "2D1", "2M1", "2ku2", "2WR6", "2e2", "2smw3", "2ph1", "2g1", "2eth2", "2W_WR9"],
+    "subjectsBlacklist": []
 }
 ```
 
@@ -185,34 +191,34 @@ The `cancelledDisplay` option in the user configuration allows you to control ho
 
 - `hide`: Cancelled lessons will be completely excluded from the feed.
 - `show`: Cancelled lessons will be included and marked with `STATUS:CANCELLED`, allowing calendar clients to display them differently (e.g., crossed out).
-- `mark`: Same as `show`, but the entire event title is rendered with a Unicode strikethrough (e.g., "M̶a̶t̶h̶ ̶(̶S̶m̶i̶t̶h̶)̶"). This makes cancellations visually obvious even in clients such as Google Calendar that don't render `STATUS:CANCELLED` specially for subscribed feeds.
+- `mark`: Same as `show`, but the event title is prefixed with a "❌" marker (e.g., "❌ Math (Smith)"). This makes cancellations visually obvious even in clients such as Google Calendar that don't render `STATUS:CANCELLED` specially for subscribed feeds.
 
 ### Holidays
 
 The `showHolidays` option in the user configuration controls whether school holidays are included as all-day entries in the generated feed. It defaults to `true`; set it to `false` for a user if you only want lesson entries in their calendar.
 
-### Custom class titles
+### Custom subject titles
 
-The `classTitles` option lets you map a WebUntis class identifier (as it appears in `classes`, e.g. `2ku1`) to a custom, human-readable title. When a lesson or exam belongs to a matching class, its event title uses your custom text instead of the raw WebUntis subject code:
+The `subjectTitles` option lets you map a WebUntis subject identifier (as it appears in `subjectsWhitelist`/`subjectsBlacklist`, e.g. `2ku1`) to a custom, human-readable title. When a lesson or exam belongs to a matching subject, its event title uses your custom text instead of the raw WebUntis subject code:
 
 ```json
 {
-    "classTitles": {
+    "subjectTitles": {
         "2ku1": "Art",
         "2WR6": "Economics"
     }
 }
 ```
 
-Matching is case-insensitive and ignores leading/trailing whitespace. The teacher and class suffix (e.g. `(Smith) - (2ku1)`) is still appended after your custom title; the description field always keeps the raw WebUntis data for reference.
+Matching is case-insensitive and ignores leading/trailing whitespace. The teacher and class suffix (e.g. `(Smith) - (12Q)`) is still appended after your custom title; the description field always keeps the raw WebUntis data for reference.
 
 ### Colors
 
-The `classColors` option lets you map a WebUntis class identifier to a color, written into each matching event as the [RFC 7986](https://www.rfc-editor.org/rfc/rfc7986#section-5.9) `COLOR` property (a CSS3 color name, e.g. `coral`, `darkblue`, `#ignored` is not valid — use a named color):
+The `subjectColors` option lets you map a WebUntis subject identifier to a color, written into each matching event as the [RFC 7986](https://www.rfc-editor.org/rfc/rfc7986#section-5.9) `COLOR` property (a CSS3 color name, e.g. `coral`, `darkblue`, `#ignored` is not valid — use a named color):
 
 ```json
 {
-    "classColors": {
+    "subjectColors": {
         "2ku1": "coral",
         "2WR6": "darkblue"
     }
@@ -221,7 +227,7 @@ The `classColors` option lets you map a WebUntis class identifier to a color, wr
 
 **Important limitation:** Google Calendar does **not** support per-event colors for calendars added via "From URL" subscription (which is how this feed is normally consumed) — it only lets you pick a single color for the *entire* subscribed calendar in its own UI, and ignores the ICS `COLOR` property entirely. This is a Google Calendar limitation, not something this project can work around.
 
-Per-event `COLOR` is still emitted because some other clients (e.g. Apple Calendar, some Thunderbird/Lightning versions) do honor it. If your primary target is Google Calendar, consider exposing each class as its own feed (e.g. via the [element timetable endpoints](#specific-element-timetable-class-room-teacher-subject)) and assigning a different color to each subscribed calendar in Google Calendar's UI instead.
+Per-event `COLOR` is still emitted because some other clients (e.g. Apple Calendar, some Thunderbird/Lightning versions) do honor it. If your primary target is Google Calendar, consider exposing each subject as its own feed (e.g. via the [element timetable endpoints](#specific-element-timetable-class-room-teacher-subject)) and assigning a different color to each subscribed calendar in Google Calendar's UI instead.
 
 ### URL parameters
 
