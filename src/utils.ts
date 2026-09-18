@@ -14,6 +14,16 @@ export function dateToUntisNumber(d: Date): number {
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 }
 
+export function normalizeClasses(classes?: string[]): string[] {
+    return Array.from(
+        new Set(
+            (classes ?? [])
+                .map((className) => className.trim().toLowerCase())
+                .filter(Boolean),
+        ),
+    ).sort();
+}
+
 export function normalizeClassName(name: string): string {
     return name.trim().toLowerCase();
 }

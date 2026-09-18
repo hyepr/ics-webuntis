@@ -6,7 +6,7 @@ import {
     Homework as UntisHomework,
 } from "webuntis";
 import { Lesson, User, UntisElementType } from "./types";
-import { parseUntisDate, dateToUntisNumber } from "./utils";
+import { parseUntisDate, dateToUntisNumber, normalizeClasses } from "./utils";
 import { mergeLessons } from "./merge";
 
 interface SessionEntry {
@@ -67,11 +67,7 @@ function isRestrictedEntry(entry: any): boolean {
 }
 
 function createAllowedClassSet(classes: User["classes"]): Set<string> {
-    return new Set(
-        (classes ?? [])
-            .map((className) => className.trim().toLowerCase())
-            .filter(Boolean),
-    );
+    return new Set(normalizeClasses(classes));
 }
 
 function matchesAllowedClass(entry: any, allowedClasses: Set<string>): boolean {

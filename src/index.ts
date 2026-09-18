@@ -11,6 +11,7 @@ import {
 import { lessonsToIcs } from "./ics";
 import { CacheHandler } from "./cacheHandler";
 import { Lesson, User } from "./types";
+import { normalizeClasses } from "./utils";
 import accessHandler from "./accessHandler";
 
 const CANCELLED_DISPLAY_VALUES: NonNullable<User["cancelledDisplay"]>[] = [
@@ -111,7 +112,8 @@ async function main() {
                 req.query.cancelledDisplay,
                 user.cancelledDisplay,
             );
-            const cacheKey = `${user.username}:${req.i18n.language}:${cancelledDisplay}`;
+            const classesKey = normalizeClasses(user.classes).join(",");
+            const cacheKey = `${user.username}:${req.i18n.language}:${cancelledDisplay}:${classesKey}`;
             const cacheEntry = icsCache.get(cacheKey);
             if (cacheEntry) {
                 return sendIcs(res, user.friendlyName, cacheEntry.ics);
