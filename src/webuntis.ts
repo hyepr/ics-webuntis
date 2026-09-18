@@ -93,7 +93,7 @@ function matchesAllowedClass(entry: any, allowedClasses: Set<string>): boolean {
  */
 function debugLogDistinctClasses(rawTimetable: any[]): void {
     const seenClasses = new Map<string, Record<string, unknown>>();
-    const seenSg = new Set<string>();
+    const seenSg = new Map<string, { date: number; subject: string }[]>();
     const seenActivityType = new Set<string>();
     const seenLsnumber = new Set<string>();
 
@@ -110,7 +110,14 @@ function debugLogDistinctClasses(rawTimetable: any[]): void {
                 });
             }
         }
-        if (entry.sg !== undefined) seenSg.add(String(entry.sg));
+        if (entry.sg !== undefined) {
+            const sgKey = String(entry.sg);
+            if (!seenSg.has(sgKey)) seenSg.set(sgKey, []);
+            seenSg.get(sgKey)!.push({
+                date: entry.date,
+                subject: entry.su?.[0]?.name ?? entry.lstext ?? "",
+            });
+        }
         if (entry.activityType !== undefined)
             seenActivityType.add(String(entry.activityType));
         if (entry.lsnumber !== undefined)
@@ -122,8 +129,16 @@ function debugLogDistinctClasses(rawTimetable: any[]): void {
         JSON.stringify(Array.from(seenClasses.values()), null, 2),
     );
     console.log(
-        "[DEBUG] Distinct entry.sg values (possible course/group identifier):",
-        JSON.stringify(Array.from(seenSg), null, 2),
+        "[DEBUG] Distinct entry.sg values with sample date/subject (possible course/group identifier):",
+        JSON.stringify(
+            Array.from(seenSg.entries()).map(([sg, occurrences]) => ({
+                sg,
+                occurrenceCount: occurrences.length,
+                samples: occurrences.slice(0, 3),
+            })),
+            null,
+            2,
+        ),
     );
     console.log(
         "[DEBUG] Distinct entry.activityType values:",
@@ -133,6 +148,40 @@ function debugLogDistinctClasses(rawTimetable: any[]): void {
         "[DEBUG] Distinct entry.lsnumber values:",
         JSON.stringify(Array.from(seenLsnumber), null, 2),
     );
+}
+
+/*
+ * DEBUG ONLY: prints every class registered in the whole school (from
+ * untis.getClasses()), not just the ones referenced by this account's own
+ * timetable. Personal timetables in Oberstufe/Kurssystem setups often only
+ * expose the base cohort class (e.g. "12Q") via `kl`, while the actual
+ * per-course Klasse objects (which may be named like the configured
+ * `classes` values, e.g. "2_b3") only show up in the school-wide class
+ * registry. This makes it possible to check whether the configured
+ * identifiers exist there at all, separate from what shows up per-lesson.
+ */
+async function debugLogAllSchoolClasses(
+    untis: WebUntis,
+    schoolyearId: number,
+): Promise<void> {
+    try {
+        const classes = await untis.getClasses(true, schoolyearId);
+        console.log(
+            "[DEBUG] All classes registered in the school (getClasses()):",
+            JSON.stringify(
+                classes.map((c) => ({
+                    id: c.id,
+                    name: c.name,
+                    longName: c.longName,
+                    active: c.active,
+                })),
+                null,
+                2,
+            ),
+        );
+    } catch (err) {
+        console.warn("[DEBUG] Failed to fetch getClasses() for debug log:", err);
+    }
 }
 
 /*
@@ -284,6 +333,8 @@ export async function fetchTimetable(
 
         let rawTimetable: any[];
         if (!type || numericId === undefined) {
+            await debugLogAllSchoolClasses(untis, schoolyear.id);
+
             rawTimetable = await untis.getOwnTimetableForRange(
                 clampedStartDate,
                 clampedEndDate,
