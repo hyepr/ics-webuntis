@@ -17,7 +17,7 @@ export function dateToUntisNumber(d: Date): number {
 export function normalizeClasses(classes?: string[]): string[] {
     return Array.from(
         new Set(
-            (classes ?? [])
+            (Array.isArray(classes) ? classes : [])
                 .map((className) => className.trim().toLowerCase())
                 .filter(Boolean),
         ),
