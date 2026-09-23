@@ -9,6 +9,8 @@ export interface IcsOptions {
     subjectTitles?: Record<string, string>;
     /* Maps WebUntis subject identifiers to a CSS3 color name, see User.subjectColors */
     subjectColors?: Record<string, string>;
+    /* Own class name (e.g. the WebUntis username), stripped from the class list shown in event titles */
+    ownClassName?: string;
 }
 
 export function lessonsToIcs(
@@ -18,7 +20,13 @@ export function lessonsToIcs(
     t: TFunction,
     options: IcsOptions = {},
 ): string {
-    const { cancelledDisplay = "mark", subjectTitles, subjectColors } = options;
+    const {
+        cancelledDisplay = "mark",
+        subjectTitles,
+        subjectColors,
+        ownClassName,
+    } = options;
+    const normalizedOwnClass = ownClassName?.trim().toLowerCase();
     const cal = ical({ name: t("calendar.name"), timezone });
     // Tracks the color per created VEVENT (in creation order) so it can be injected
     // into the raw ICS output afterwards, since ical-generator has no color API.
@@ -88,8 +96,14 @@ export function lessonsToIcs(
                 ? `${teacherList} ...+${teacherCount - 3}`
                 : teacherList;
 
-        const classCount = l.class.length;
-        const classList = l.class.slice(0, 3).join(", ");
+        const classesForTitle = normalizedOwnClass
+            ? l.class.filter(
+                  (c) => c.trim().toLowerCase() !== normalizedOwnClass,
+              )
+            : l.class;
+
+        const classCount = classesForTitle.length;
+        const classList = classesForTitle.slice(0, 3).join(", ");
         const classSummary =
             classCount > 3 ? `${classList} ...+${classCount - 3}` : classList;
 
@@ -98,13 +112,16 @@ export function lessonsToIcs(
         const subjectText =
             titleOverride ?? (l.subject === "Event" ? l.lstext : l.subject);
 
+        const hasTeacherSummary =
+            !!teacherSummary && teacherSummary !== unknownTeacher;
+        const hasClassSummary =
+            !!classSummary && classSummary !== unknownClass;
+
         let calSummary = [
             subjectText,
-            teacherSummary !== unknownTeacher && `(${teacherSummary})`,
-            teacherSummary !== unknownTeacher &&
-                classSummary !== unknownClass &&
-                "-",
-            classSummary !== unknownClass && `(${classSummary})`,
+            hasTeacherSummary && `(${teacherSummary})`,
+            hasTeacherSummary && hasClassSummary && "-",
+            hasClassSummary && `(${classSummary})`,
         ]
             .filter(Boolean)
             .join(" ");

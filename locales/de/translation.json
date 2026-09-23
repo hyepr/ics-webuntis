@@ -16,6 +16,7 @@
         "status": "Status",
         "unknown_teacher": "Unbekannter Lehrer",
         "unknown_class": "Unbekannte Klasse",
-        "cancelled": "Entfällt"
+        "cancelled": "Entfällt",
+        "break": "Pause"
     }
 }
