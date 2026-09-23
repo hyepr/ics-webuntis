@@ -79,6 +79,38 @@ function getEntrySubjectNames(entry: any): string[] {
 }
 
 /*
+ * Logs every distinct subject identifier found in the raw timetable, along
+ * with its long name, so users can find the values to put in
+ * subjectsWhitelist/subjectsBlacklist without having to guess.
+ */
+function logDiscoveredSubjects(user: User, rawTimetable: any[]): void {
+    const subjects = new Map<string, string>();
+
+    for (const entry of rawTimetable) {
+        for (const su of entry.su ?? []) {
+            const name = typeof su?.name === "string" ? su.name.trim() : "";
+            if (!name || subjects.has(name)) continue;
+            const longName =
+                typeof su?.longname === "string" ? su.longname.trim() : "";
+            subjects.set(name, longName);
+        }
+    }
+
+    if (subjects.size === 0) return;
+
+    const list = Array.from(subjects.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([name, longName]) =>
+            longName ? `  ${name} (${longName})` : `  ${name}`,
+        )
+        .join("\n");
+
+    console.log(
+        `Subjects found in timetable for ${user.friendlyName}:\n${list}`,
+    );
+}
+
+/*
  * A lesson passes if none of its subjects are blacklisted, and - when a
  * whitelist is configured - at least one of its subjects is whitelisted.
  * The blacklist always wins over the whitelist.
@@ -205,6 +237,8 @@ export async function fetchTimetable(
                 clampedStartDate,
                 clampedEndDate,
             );
+
+            logDiscoveredSubjects(user, rawTimetable);
 
             const subjectsWhitelist = createSubjectSet(user.subjectsWhitelist);
             const subjectsBlacklist = createSubjectSet(user.subjectsBlacklist);
