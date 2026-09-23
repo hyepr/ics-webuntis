@@ -1,5 +1,6 @@
 import express from "express";
 import i18nextMiddleware from "i18next-http-middleware";
+import { TFunction } from "i18next";
 import i18next from "./i18n";
 import { configManager } from "./config";
 import {
@@ -8,6 +9,7 @@ import {
     fetchExams,
     fetchHomework,
 } from "./webuntis";
+import { generateBreakLessons } from "./breaks";
 import { lessonsToIcs } from "./ics";
 import { CacheHandler } from "./cacheHandler";
 import { Lesson, User } from "./types";
@@ -77,6 +79,7 @@ async function main() {
         user: User,
         startDate: Date,
         endDate: Date,
+        t: TFunction,
         type?: "class" | "room" | "teacher" | "subject",
         id?: string,
     ): Promise<Lesson[]> {
@@ -90,7 +93,14 @@ async function main() {
             fetchHolidays(user, startDate, endDate),
         ]);
 
-        return [...lessons, ...holidays];
+        const breaks = generateBreakLessons(
+            startDate,
+            endDate,
+            holidays,
+            t("calendar.break"),
+        );
+
+        return [...lessons, ...holidays, ...breaks];
     }
 
     app.get("/timetable/:name", accessHandler, async (req, res) => {
@@ -121,7 +131,12 @@ async function main() {
 
             const { startDate, endDate } = getDateRange();
 
-            const entries = await fetchAllEntries(user, startDate, endDate);
+            const entries = await fetchAllEntries(
+                user,
+                startDate,
+                endDate,
+                req.t,
+            );
             if (entries.length === 0) {
                 return res.status(404).send(req.t("errors.no_timetable"));
             }
@@ -135,6 +150,7 @@ async function main() {
                     cancelledDisplay,
                     subjectTitles: user.subjectTitles,
                     subjectColors: user.subjectColors,
+                    ownClassName: user.username,
                 },
             );
 
@@ -198,6 +214,7 @@ async function main() {
                         cancelledDisplay,
                         subjectTitles: user.subjectTitles,
                         subjectColors: user.subjectColors,
+                        ownClassName: user.username,
                     },
                 );
 
@@ -228,6 +245,7 @@ async function main() {
                 user,
                 startDate,
                 endDate,
+                req.t,
                 type,
                 id,
             );
@@ -247,6 +265,7 @@ async function main() {
                     cancelledDisplay,
                     subjectTitles: user.subjectTitles,
                     subjectColors: user.subjectColors,
+                    ownClassName: user.username,
                 },
             );
 
